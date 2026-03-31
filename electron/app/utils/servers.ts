@@ -56,9 +56,28 @@ export async function startFastApiServer(
   fastApiProcess.on("error", (err) => {
     safeLog(`Spawn error: ${err.message}\n`, fastapiLogPath);
   });
+  const ready = Promise.race([
+    waitForServer(`${localhost}:${port}/docs`),
+    new Promise<void>((_, reject) => {
+      fastApiProcess.once("exit", (code, signal) => {
+        reject(
+          new Error(
+            `FastAPI exited before becoming ready (code=${code}, signal=${signal}). Check logs at ${fastapiLogPath}`
+          )
+        );
+      });
+      fastApiProcess.once("error", (err) => {
+        reject(
+          new Error(
+            `FastAPI failed to spawn: ${err.message}. Check logs at ${fastapiLogPath}`
+          )
+        );
+      });
+    }),
+  ]);
   return {
     process: fastApiProcess,
-    ready: waitForServer(`${localhost}:${port}/docs`),
+    ready,
   };
 }
 

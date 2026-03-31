@@ -61,6 +61,8 @@ const afterPack = async (context) => {
 const config = {
   appId: "PresentonAI.Presenton",
   asar: false,
+  // Avoid auto compression mode differences across OS/CI environments.
+  compression: "normal",
   copyright: "Copyright © 2026 Presenton",
   directories: {
     output: "dist",
@@ -99,6 +101,8 @@ const config = {
     perMachine: false,
     allowToChangeInstallationDirectory: true,
     allowElevation: true,
+    // More stable on Windows for larger app payloads than 7z+solid defaults.
+    useZip: true,
     installerIcon: "build/icon.ico",
     uninstallerIcon: "build/icon.ico",
     installerHeaderIcon: "build/icon.ico",

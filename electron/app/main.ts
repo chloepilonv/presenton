@@ -1,11 +1,11 @@
 require("dotenv").config();
-import { app, BrowserWindow, shell } from "electron";
+import { app, BrowserWindow, dialog, shell } from "electron";
 import path from "path";
 import fs from "fs";
 import { findUnusedPorts, killProcess, setupEnv, setUserConfig } from "./utils";
 import { startFastApiServer, startNextJsServer } from "./utils/servers";
 import { ChildProcessByStdio } from "child_process";
-import { appDataDir, baseDir, ensureDirectoriesExist, fastapiDir, isDev, localhost, nextjsDir, tempDir, userConfigPath, userDataDir } from "./utils/constants";
+import { appDataDir, baseDir, ensureDirectoriesExist, fastapiDir, isDev, localhost, logsDir, nextjsDir, tempDir, userConfigPath, userDataDir } from "./utils/constants";
 import { setupIpcHandlers } from "./ipc";
 import { ipcMain } from "electron";
 import { setupLibreOfficeInstallHandlers } from "./ipc/libreoffice_install_handlers";
@@ -158,6 +158,7 @@ async function startServers(fastApiPort: number, nextjsPort: number) {
     await nextjs.ready;
   } catch (error) {
     console.error("Server startup error:", error);
+    throw error;
   }
 }
 
@@ -269,8 +270,19 @@ app.whenReady().then(async () => {
   setupEnv(fastApiPort, nextjsPort);
   setupIpcHandlers();
 
-  await startServers(fastApiPort, nextjsPort);
-  win?.loadURL(`${localhost}:${nextjsPort}`);
+  try {
+    await startServers(fastApiPort, nextjsPort);
+    win?.loadURL(`${localhost}:${nextjsPort}`);
+  } catch (error: any) {
+    const detail = error?.message || String(error);
+    const logsHint = `\n\nSee logs in: ${logsDir}`;
+    console.error(`[Presenton] Startup failed: ${detail}`);
+    dialog.showErrorBox(
+      "Presenton startup failed",
+      `Could not start required local services.\n${detail}${logsHint}`
+    );
+    return;
+  }
 
   // Begin polling the version server for available updates
   if (win) {
