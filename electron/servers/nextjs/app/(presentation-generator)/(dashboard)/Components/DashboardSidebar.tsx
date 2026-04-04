@@ -5,6 +5,10 @@ import { LayoutDashboard, Star, Brain, Settings, Palette } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+import { IMAGE_PROVIDERS, LLM_PROVIDERS } from "@/utils/providerConstants";
 
 
 
@@ -27,6 +31,10 @@ const DashboardSidebar = () => {
     const activeTab = pathname.split("?")[0].split("/").pop();
     const router = useRouter();
 
+    const { llm_config } = useSelector((state: RootState) => state.userConfig)
+    const textProviderIcon = LLM_PROVIDERS[llm_config.LLM as keyof typeof LLM_PROVIDERS]?.icon
+    const imageProviderIcon = IMAGE_PROVIDERS[llm_config.IMAGE_PROVIDER as keyof typeof IMAGE_PROVIDERS]?.icon || '/providers/pexel.png'
+
 
 
 
@@ -37,7 +45,7 @@ const DashboardSidebar = () => {
         >
             <div>
 
-                <div onClick={() => router.push("/dashboard")} className="flex items-center  pb-6 border-b border-[#E1E1E5]   gap-2    ">
+                <div onClick={() => { trackEvent(MixpanelEvent.Sidebar_Navigation_Clicked, { target: '/dashboard' }); router.push("/dashboard"); }} className="flex items-center  pb-6 border-b border-[#E1E1E5]   gap-2    ">
                     <div className="bg-[#7C51F8] rounded-full cursor-pointer p-1 flex justify-center items-center mx-auto">
                         <img src="/logo-with-bg.png" alt="Presenton logo" className="h-[40px] object-contain w-full" />
                     </div>
@@ -49,6 +57,7 @@ const DashboardSidebar = () => {
                         <Link
                             prefetch={false}
                             href={`/dashboard`}
+                            onClick={() => trackEvent(MixpanelEvent.Sidebar_Navigation_Clicked, { target: '/dashboard' })}
                             className={[
                                 "flex flex-col tex-center items-center gap-2  transition-colors",
                                 pathname === "/dashboard" ? "" : "ring-transparent",
@@ -62,6 +71,7 @@ const DashboardSidebar = () => {
                         <Link
                             prefetch={false}
                             href={`/templates`}
+                            onClick={() => trackEvent(MixpanelEvent.Sidebar_Navigation_Clicked, { target: '/templates' })}
                             className={[
                                 "flex flex-col tex-center items-center gap-2  transition-colors",
                                 pathname === "/templates" ? "" : "ring-transparent",
@@ -77,6 +87,7 @@ const DashboardSidebar = () => {
                         <Link
                             prefetch={false}
                             href={`/theme`}
+                            onClick={() => trackEvent(MixpanelEvent.Sidebar_Navigation_Clicked, { target: '/theme' })}
                             className={[
                                 "flex flex-col tex-center items-center gap-2  transition-colors",
                                 pathname === "/theme" ? "" : "ring-transparent",
@@ -102,6 +113,7 @@ const DashboardSidebar = () => {
                             prefetch={false}
                             key={key}
                             href={`/${key}`}
+                            onClick={() => trackEvent(MixpanelEvent.Sidebar_Navigation_Clicked, { target: `/${key}` })}
                             className={[
                                 "flex flex-col tex-center items-center gap-2  transition-colors ",
                                 isActive ? "" : "ring-transparent",
@@ -109,7 +121,10 @@ const DashboardSidebar = () => {
                             aria-label={itemLabel}
                             title={itemLabel}
                         >
-                            <Icon className={["h-4 w-4", isActive ? "text-[#5146E5]" : "text-slate-600"].join(" ")} />
+                            <div className="flex items-center  ">
+                                <img src={imageProviderIcon} alt="image provider" className="w-5 h-5 rounded-full object-cover border border-[#EDEEEF]" />
+                                <img src={textProviderIcon} alt="text provider" className="w-5 h-5 rounded-full object-cover border border-[#EDEEEF]" />
+                            </div>
                             <span className="text-[11px] text-slate-800">{itemLabel}</span>
                         </Link>
                     );
