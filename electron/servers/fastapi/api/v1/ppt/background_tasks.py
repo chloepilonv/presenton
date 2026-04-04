@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.ollama_model_status import OllamaModelStatus
 from models.sql.ollama_pull_status import OllamaPullStatus
-from services.database import get_container_db_async_session
+from services.database import get_async_session
 from utils.ollama import pull_ollama_model
 
 
@@ -17,7 +17,7 @@ async def pull_ollama_model_background_task(model: str):
     )
     log_event_count = 0
 
-    session = await get_container_db_async_session().__anext__()
+    session = await get_async_session().__anext__()
 
     try:
         async for event in pull_ollama_model(model):

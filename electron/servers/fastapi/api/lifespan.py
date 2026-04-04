@@ -5,6 +5,7 @@ from fastapi import FastAPI
 
 from migrations import migrate_database_on_startup
 from services.database import create_db_and_tables
+from services.memori_integration import MEMORI_INTEGRATION
 from utils.get_env import get_app_data_directory_env
 from utils.model_availability import (
     check_llm_and_image_provider_api_or_model_availability,
@@ -20,7 +21,13 @@ async def app_lifespan(_: FastAPI):
     LLM model availability.
     """
     os.makedirs(get_app_data_directory_env(), exist_ok=True)
+    memori_initialized = MEMORI_INTEGRATION.initialize_local_storage()
+    if memori_initialized:
+        print(
+            f"[FastAPI] Memori local storage ready: {MEMORI_INTEGRATION.get_sqlite_path()}"
+        )
     await migrate_database_on_startup()
     await create_db_and_tables()
     await check_llm_and_image_provider_api_or_model_availability()
     yield
+    MEMORI_INTEGRATION.shutdown()

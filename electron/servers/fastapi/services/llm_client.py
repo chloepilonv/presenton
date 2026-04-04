@@ -39,6 +39,7 @@ from models.llm_tool_call import (
     OpenAIToolCallFunction,
 )
 from models.llm_tools import LLMDynamicTool, LLMTool
+from services.memori_integration import MEMORI_INTEGRATION
 from services.llm_tool_calls_handler import LLMToolCallsHandler
 from utils.async_iterator import iterator_to_async
 from utils.dummy_functions import do_nothing_async
@@ -126,7 +127,8 @@ class LLMClient:
                 status_code=400,
                 detail="OpenAI API Key is not set",
             )
-        return AsyncOpenAI()
+        client = AsyncOpenAI()
+        return MEMORI_INTEGRATION.register_client(client)
 
     def _get_google_client(self):
         if not get_google_api_key_env():
@@ -134,7 +136,8 @@ class LLMClient:
                 status_code=400,
                 detail="Google API Key is not set",
             )
-        return genai.Client()
+        client = genai.Client()
+        return MEMORI_INTEGRATION.register_client(client)
 
     def _get_anthropic_client(self):
         if not get_anthropic_api_key_env():
@@ -142,13 +145,15 @@ class LLMClient:
                 status_code=400,
                 detail="Anthropic API Key is not set",
             )
-        return AsyncAnthropic()
+        client = AsyncAnthropic()
+        return MEMORI_INTEGRATION.register_client(client)
 
     def _get_ollama_client(self):
-        return AsyncOpenAI(
+        client = AsyncOpenAI(
             base_url=(get_ollama_url_env() or "http://localhost:11434") + "/v1",
             api_key="ollama",
         )
+        return MEMORI_INTEGRATION.register_client(client)
 
     def _get_custom_client(self):
         if not get_custom_llm_url_env():
@@ -156,10 +161,11 @@ class LLMClient:
                 status_code=400,
                 detail="Custom LLM URL is not set",
             )
-        return AsyncOpenAI(
+        client = AsyncOpenAI(
             base_url=get_custom_llm_url_env(),
             api_key=get_custom_llm_api_key_env() or "null",
         )
+        return MEMORI_INTEGRATION.register_client(client)
 
     def _get_codex_headers(self) -> dict:
         """Return the HTTP headers required for Codex Responses API requests.
@@ -222,12 +228,13 @@ class LLMClient:
         default_headers = {
             k: v for k, v in headers.items() if k.lower() not in skip
         }
-        return AsyncOpenAI(
+        client = AsyncOpenAI(
             base_url="https://chatgpt.com/backend-api/codex",
             api_key=access_token or "codex",
             default_headers=default_headers,
             timeout=120.0,
         )
+        return MEMORI_INTEGRATION.register_client(client)
 
     # ? Prompts
     def _get_system_prompt(self, messages: List[LLMMessage]) -> str:
@@ -632,7 +639,6 @@ class LLMClient:
         tools: Optional[List[type[LLMTool] | LLMDynamicTool]] = None,
     ):
         parsed_tools = self.tool_calls_handler.parse_tools(tools)
-
         content = None
         match self.llm_provider:
             case LLMProvider.OPENAI:
@@ -1077,7 +1083,6 @@ class LLMClient:
         max_tokens: Optional[int] = None,
     ) -> dict:
         parsed_tools = self.tool_calls_handler.parse_tools(tools)
-
         for attempt in range(3):
             content = None
             match self.llm_provider:
@@ -1150,8 +1155,8 @@ class LLMClient:
         messages: List[LLMMessage],
         max_tokens: Optional[int] = None,
         tools: Optional[List[dict]] = None,
-        extra_body: Optional[dict] = None,
         depth: int = 0,
+        extra_body: Optional[dict] = None,
     ) -> AsyncGenerator[str, None]:
         client: AsyncOpenAI = self._client
 
@@ -1563,7 +1568,6 @@ class LLMClient:
         tools: Optional[List[type[LLMTool] | LLMDynamicTool]] = None,
     ):
         parsed_tools = self.tool_calls_handler.parse_tools(tools)
-
         match self.llm_provider:
             case LLMProvider.OPENAI:
                 return self._stream_openai(
@@ -2268,7 +2272,6 @@ class LLMClient:
         max_tokens: Optional[int] = None,
     ):
         parsed_tools = self.tool_calls_handler.parse_tools(tools)
-
         match self.llm_provider:
             case LLMProvider.OPENAI:
                 return self._stream_openai_structured(
