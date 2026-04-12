@@ -1,0 +1,15 @@
+electron/
+readme_assets/
+.github/
+.git/
+test-local.sh
+test_server.py
+docker-compose*.yml
+Dockerfile.dev
+app_data/
+presenton_data/
+servers/fastapi/.venv-lite/
+servers/fastapi/tmp/
+servers/fastapi/debug/
+servers/nextjs/node_modules/
+servers/nextjs/.next/

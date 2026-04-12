@@ -170,21 +170,31 @@ const startServers = async () => {
     console.error("Next.js process failed to start:", err);
   });
 
-  const ollamaProcess = spawn("ollama", ["serve"], {
-    cwd: "/",
-    stdio: "inherit",
-    env: process.env,
-  });
+  // Ollama is optional — skip it if the binary isn't installed (Railway prod
+  // uses OpenAI, so ollama isn't needed and would just crash the process tree).
+  const { existsSync: fsExistsSync } = await import("fs");
+  const ollamaExitPromise = (() => {
+    const ollamaBin = ["/usr/bin/ollama", "/usr/local/bin/ollama"].find(fsExistsSync);
+    if (!ollamaBin) {
+      console.log("Ollama binary not found — skipping (using remote LLM provider).");
+      return new Promise(() => {}); // never resolves
+    }
+    const ollamaProcess = spawn(ollamaBin, ["serve"], {
+      cwd: "/",
+      stdio: "inherit",
+      env: process.env,
+    });
+    ollamaProcess.on("error", (err) => {
+      console.error("Ollama process failed to start:", err);
+    });
+    return new Promise((resolve) => ollamaProcess.on("exit", resolve));
+  })();
 
-  ollamaProcess.on("error", (err) => {
-    console.error("Ollama process failed to start:", err);
-  });
-
-  // Keep the Node process alive until both servers exit
+  // Keep the Node process alive until fastapi or nextjs exits.
   const exitCode = await Promise.race([
     new Promise((resolve) => fastApiProcess.on("exit", resolve)),
     new Promise((resolve) => nextjsProcess.on("exit", resolve)),
-    new Promise((resolve) => ollamaProcess.on("exit", resolve)),
+    ollamaExitPromise,
   ]);
 
   console.log(`One of the processes exited. Exit code: ${exitCode}`);
