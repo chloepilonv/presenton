@@ -23,7 +23,30 @@ export async function GET() {
     return NextResponse.json({});
   }
   const configData = fs.readFileSync(userConfigPath, "utf-8");
-  return NextResponse.json(JSON.parse(configData));
+  return NextResponse.json(redactSecrets(JSON.parse(configData)));
+}
+
+const SECRET_KEYS = new Set([
+  "OPENAI_API_KEY",
+  "ANTHROPIC_API_KEY",
+  "GOOGLE_API_KEY",
+  "PIXABAY_API_KEY",
+  "PEXELS_API_KEY",
+  "CUSTOM_LLM_API_KEY",
+  "CODEX_ACCESS_TOKEN",
+  "CODEX_REFRESH_TOKEN",
+]);
+
+function redactSecrets(config: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(config)) {
+    if (SECRET_KEYS.has(k)) {
+      out[k] = typeof v === "string" && v.length > 0 ? "***" : v;
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
 }
 
 export async function POST(request: Request) {
