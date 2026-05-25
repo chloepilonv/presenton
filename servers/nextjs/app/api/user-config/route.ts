@@ -26,13 +26,17 @@ export async function GET() {
   return NextResponse.json(redactSecrets(JSON.parse(configData)));
 }
 
+// Provider API keys (real secrets that must never leave the server).
+// CUSTOM_LLM_API_KEY is intentionally NOT redacted: it's a shared bearer
+// equal to PRESENTON_API_TOKEN (already required to call this endpoint),
+// and the client needs its real value to validate the configured custom
+// model via /api/v1/ppt/openai/models/available.
 const SECRET_KEYS = new Set([
   "OPENAI_API_KEY",
   "ANTHROPIC_API_KEY",
   "GOOGLE_API_KEY",
   "PIXABAY_API_KEY",
   "PEXELS_API_KEY",
-  "CUSTOM_LLM_API_KEY",
   "CODEX_ACCESS_TOKEN",
   "CODEX_REFRESH_TOKEN",
 ]);
@@ -121,5 +125,6 @@ export async function POST(request: Request) {
     CODEX_ACCOUNT_ID: existingConfig.CODEX_ACCOUNT_ID,
   };
   fs.writeFileSync(userConfigPath, JSON.stringify(mergedConfig));
-  return NextResponse.json(mergedConfig);
+  // Redact secrets in the response too — POST is just as reachable as GET.
+  return NextResponse.json(redactSecrets(mergedConfig as Record<string, unknown>));
 }
