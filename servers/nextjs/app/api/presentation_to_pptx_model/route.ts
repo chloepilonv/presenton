@@ -262,16 +262,27 @@ async function getSlidesAndSpeakerNotes(page: Page) {
 }
 
 async function getSlidesWrapper(page: Page): Promise<ElementHandle<Element>> {
-  // Wait up to 30s for slides to render (React state update is async after fetch)
-  const slides_wrapper = await page.waitForSelector("#presentation-slides-wrapper", { timeout: 30000 }).catch(() => null);
-  if (!slides_wrapper) {
-    // Capture page title/url for debugging
-    const url = page.url();
-    const title = await page.title().catch(() => "?");
-    const bodyText = await page.evaluate(() => document.body?.innerText?.slice(0, 200) ?? "").catch(() => "");
-    console.error("[pptx] slides wrapper not found. url=", url, "title=", title, "body=", bodyText);
-    throw new ApiError("Presentation slides not found");
-  }
+  // First wait for the element to appear (initial SSR render should have it)
+  // then wait for actual slide content (not just skeleton)
+  await page.waitForFunction(
+    () => {
+      const el = document.querySelector("#presentation-slides-wrapper");
+      if (!el) return false;
+      // Check for actual slide divs (data-speaker-note attr marks real slides)
+      const slides = el.querySelectorAll("[data-speaker-note]");
+      return slides.length > 0;
+    },
+    { timeout: 30000 }
+  ).catch(async () => {
+    const diagnostic = await page.evaluate(() => ({
+      hasWrapper: !!document.querySelector("#presentation-slides-wrapper"),
+      hasError: !!document.querySelector(".text-red-700"),
+      bodyText: document.body?.innerText?.slice(0, 300) ?? "",
+    })).catch(() => ({ hasWrapper: false, hasError: false, bodyText: "eval failed" }));
+    throw new ApiError("Presentation slides not found: " + JSON.stringify(diagnostic));
+  });
+  const slides_wrapper = await page.$("#presentation-slides-wrapper");
+  if (!slides_wrapper) throw new ApiError("Presentation slides not found after wait");
   return slides_wrapper;
 }
 
