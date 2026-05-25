@@ -19,7 +19,7 @@ class BearerTokenAuthMiddleware(BaseHTTPMiddleware):
     """Require `Authorization: Bearer <PRESENTON_API_TOKEN>` on API routes.
 
     No-op if PRESENTON_API_TOKEN is unset (preserves local-dev ergonomics).
-    Skips OpenAPI docs and CORS preflight."""
+    Skips OpenAPI docs, CORS preflight, and loopback requests (Puppeteer/internal)."""
 
     SKIP_PREFIXES = ("/docs", "/openapi.json", "/redoc")
 
@@ -30,6 +30,8 @@ class BearerTokenAuthMiddleware(BaseHTTPMiddleware):
         if request.method == "OPTIONS":
             return await call_next(request)
         if any(request.url.path.startswith(p) for p in self.SKIP_PREFIXES):
+            return await call_next(request)
+        if request.client and request.client.host in ("127.0.0.1", "::1"):
             return await call_next(request)
 
         header = request.headers.get("authorization", "")
