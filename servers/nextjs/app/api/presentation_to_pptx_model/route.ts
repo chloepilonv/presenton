@@ -95,6 +95,14 @@ async function getBrowserAndPage(id: string): Promise<[Browser, Page]> {
 
   const page = await browser.newPage();
 
+  // When PRESENTON_API_TOKEN is set, all /api/* routes require Bearer auth.
+  // The pdf-maker page fetches presentation data from /api/v1/ppt/... so the
+  // puppeteer-controlled browser must send the token on every request.
+  const token = process.env.PRESENTON_API_TOKEN;
+  if (token) {
+    await page.setExtraHTTPHeaders({ Authorization: `Bearer ${token}` });
+  }
+
   await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
   page.setDefaultNavigationTimeout(300000);
   page.setDefaultTimeout(300000);

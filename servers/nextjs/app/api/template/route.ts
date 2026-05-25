@@ -32,6 +32,10 @@ export async function GET(request: Request) {
       ],
     });
     const page = await browser.newPage();
+    const token = process.env.PRESENTON_API_TOKEN;
+    if (token) {
+      await page.setExtraHTTPHeaders({ Authorization: `Bearer ${token}` });
+    }
     await page.setViewport({ width: 1280, height: 720 });
     page.setDefaultNavigationTimeout(300000);
     page.setDefaultTimeout(300000);
