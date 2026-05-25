@@ -262,8 +262,14 @@ async function getSlidesAndSpeakerNotes(page: Page) {
 }
 
 async function getSlidesWrapper(page: Page): Promise<ElementHandle<Element>> {
-  const slides_wrapper = await page.$("#presentation-slides-wrapper");
+  // Wait up to 30s for slides to render (React state update is async after fetch)
+  const slides_wrapper = await page.waitForSelector("#presentation-slides-wrapper", { timeout: 30000 }).catch(() => null);
   if (!slides_wrapper) {
+    // Capture page title/url for debugging
+    const url = page.url();
+    const title = await page.title().catch(() => "?");
+    const bodyText = await page.evaluate(() => document.body?.innerText?.slice(0, 200) ?? "").catch(() => "");
+    console.error("[pptx] slides wrapper not found. url=", url, "title=", title, "body=", bodyText);
     throw new ApiError("Presentation slides not found");
   }
   return slides_wrapper;
